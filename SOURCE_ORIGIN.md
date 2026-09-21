@@ -1,9 +1,9 @@
 # Edge worker source origin
 
-This directory was copied from the local source at:
+This V2 repository is the active edge-router source. It was selectively imported
+from the frozen pre-V2 worker snapshot and then reconciled for the new V2-only
+topology. The frozen source remains outside the active V2 tree for reference and
+rollback; it is not a deployment target.
 
-`Tech Stack/dinodia-edge-worker`
-
-The expected GitHub repository `nivedit1998/dinodia-edge-worker` was not available when this snapshot was first assembled, and no Git metadata existed in the source directory. The source and Wrangler configuration were copied into `Tech Stack V2` without `node_modules` or `.wrangler` caches. The repository was then created and initialized from this snapshot.
-
-The initial commit is therefore a source-baseline import rather than a continuation of prior Git history.
+The active worker forwards only to the V2 Vercel project and contains no AWS,
+legacy Vercel or customer-selected origin.
