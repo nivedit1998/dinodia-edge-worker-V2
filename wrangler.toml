@@ -1,0 +1,6 @@
+name = "dinodia-edge-worker-v2"
+main = "src/index.ts"
+compatibility_date = "2026-02-05"
+
+[vars]
+VERCEL_APP_ORIGIN = "https://dinodia-platform-v2.vercel.app"

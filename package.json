@@ -1,0 +1,17 @@
+{
+  "name": "dinodia-edge-worker-v2",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "check": "npm run typecheck",
+    "build": "wrangler deploy --dry-run",
+    "wrangler:dry-run": "wrangler deploy --dry-run"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260702.1",
+    "typescript": "^5.9.2",
+    "wrangler": "^4.63.0"
+  }
+}
