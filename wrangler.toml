@@ -3,7 +3,7 @@ main = "src/index.ts"
 compatibility_date = "2026-02-05"
 
 [vars]
-VERCEL_APP_ORIGIN = "https://dinodia-platform-v2.vercel.app"
+VERCEL_APP_ORIGIN = "https://dinodia-platform-v2-ki4eih6bb-dinodia-supabase.vercel.app"
 
 # Isolated release-candidate worker. It has no public route; the origin is the
 # current Vercel preview deployment used for RC validation.
@@ -11,4 +11,7 @@ VERCEL_APP_ORIGIN = "https://dinodia-platform-v2.vercel.app"
 name = "dinodia-edge-worker-v2-rc"
 
 [env.rc.vars]
-VERCEL_APP_ORIGIN = "https://dinodia-platform-v2-43eft24ag-dinodia-supabase.vercel.app"
+VERCEL_APP_ORIGIN = "https://dinodia-platform-v2-ki4eih6bb-dinodia-supabase.vercel.app"
+
+# Set this only with `wrangler secret put VERCEL_AUTOMATION_BYPASS_SECRET --env rc`.
+# Never place the value in this file or a deployment variable block.

@@ -6,6 +6,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "check": "npm run typecheck",
+    "test": "node --test test/*.test.mjs",
     "build": "wrangler deploy --dry-run",
     "wrangler:dry-run": "wrangler deploy --dry-run"
   },

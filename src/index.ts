@@ -3,6 +3,7 @@
 // the V2 routing contract.
 export interface Env {
   VERCEL_APP_ORIGIN: string;
+  VERCEL_AUTOMATION_BYPASS_SECRET?: string;
 }
 
 function getClientIp(request: Request): string | null {
@@ -25,16 +26,21 @@ export default {
     const url = new URL(request.url);
 
     if (!url.pathname.startsWith("/api/")) {
-      return fetch(request);
+      return new Response("Not found", { status: 404 });
     }
 
     const origin = env.VERCEL_APP_ORIGIN;
-    if (!origin || !/^https:\/\/dinodia-platform-v2(?:-[a-z0-9-]+)?\.vercel\.app$/i.test(origin)) {
+    if (!origin || !/^https:\/\/dinodia-platform-v2(?:-[a-z0-9-]+)?-dinodia-supabase\.vercel\.app$/i.test(origin)) {
       return new Response("V2 edge origin is not configured", { status: 503 });
+    }
+    if (!env.VERCEL_AUTOMATION_BYPASS_SECRET) {
+      return new Response("V2 edge secret is not configured", { status: 503 });
     }
     const upstreamUrl = buildUpstreamUrl(origin, url);
 
     const headers = new Headers(request.headers);
+    headers.delete("x-vercel-protection-bypass");
+    headers.set("x-vercel-protection-bypass", env.VERCEL_AUTOMATION_BYPASS_SECRET);
     // Ensure upstream app logic sees the original public host/proto (important for auth redirects).
     const originalHost = url.host;
     headers.set("host", originalHost);
@@ -52,6 +58,7 @@ export default {
 
     const upstreamResponse = await fetch(upstreamRequest);
     const responseHeaders = new Headers(upstreamResponse.headers);
+    responseHeaders.delete("x-vercel-protection-bypass");
     responseHeaders.set("x-dinodia-api-backend", "vercel-v2");
     responseHeaders.set("x-dinodia-worker", "native-v2");
 
