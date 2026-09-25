@@ -4,14 +4,19 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
+    "lint": "eslint src --max-warnings=0",
     "typecheck": "tsc --noEmit",
     "check": "npm run typecheck",
     "test": "node --test test/*.test.mjs",
     "build": "wrangler deploy --dry-run",
-    "wrangler:dry-run": "wrangler deploy --dry-run"
+    "wrangler:dry-run": "wrangler deploy --dry-run",
+    "wrangler:rc:dry-run": "wrangler deploy --dry-run --env rc"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260702.1",
+    "@typescript-eslint/eslint-plugin": "^8.70.1",
+    "@typescript-eslint/parser": "^8.70.1",
+    "eslint": "^10.11.0",
     "typescript": "^5.9.2",
     "wrangler": "^4.63.0"
   }
