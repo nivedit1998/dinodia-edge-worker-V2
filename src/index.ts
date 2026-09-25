@@ -21,6 +21,12 @@ function buildUpstreamUrl(origin: string, requestUrl: URL): string {
   return upstream.toString();
 }
 
+const CANONICAL_VERCEL_ORIGIN = "https://dinodia-platform-v2.vercel.app";
+
+function isCanonicalOrigin(value: string): boolean {
+  return value.replace(/\/$/, "") === CANONICAL_VERCEL_ORIGIN;
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
@@ -30,7 +36,7 @@ export default {
     }
 
     const origin = env.VERCEL_APP_ORIGIN;
-    if (!origin || !/^https:\/\/dinodia-platform-v2(?:-[a-z0-9-]+)?-dinodia-supabase\.vercel\.app$/i.test(origin)) {
+    if (!origin || !isCanonicalOrigin(origin)) {
       return new Response("V2 edge origin is not configured", { status: 503 });
     }
     if (!env.VERCEL_AUTOMATION_BYPASS_SECRET) {
