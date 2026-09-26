@@ -5,8 +5,8 @@ compatibility_date = "2026-02-05"
 [vars]
 VERCEL_APP_ORIGIN = "https://dinodia-platform-v2.vercel.app"
 
-# Isolated release-candidate worker. It has no public route; the origin is the
-# current Vercel preview deployment used for RC validation.
+# Isolated release-candidate worker. It has no public customer route; its
+# protected upstream is the canonical Native V2 Vercel Production origin.
 [env.rc]
 name = "dinodia-edge-worker-v2-rc"
 

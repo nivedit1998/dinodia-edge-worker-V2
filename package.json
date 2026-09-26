@@ -13,7 +13,7 @@
     "wrangler:rc:dry-run": "wrangler deploy --dry-run --env rc"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20260702.1",
+    "@cloudflare/workers-types": "^5.20260925.2",
     "@typescript-eslint/eslint-plugin": "^8.70.1",
     "@typescript-eslint/parser": "^8.70.1",
     "eslint": "^10.11.0",
