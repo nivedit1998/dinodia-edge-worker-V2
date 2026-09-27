@@ -45,3 +45,15 @@ test('worker forwards only the canonical stable Vercel origin', async () => {
     globalThis.fetch = originalFetch;
   }
 });
+
+test('edge contract fixture copy matches dinodia.v1 and contains no protocol authority', () => {
+  const root = 'test/fixtures/dinodia-v1';
+  const manifest = JSON.parse(fs.readFileSync(`${root}/manifest.json`, 'utf8'));
+  const contract = JSON.parse(fs.readFileSync(`${root}/contract.json`, 'utf8'));
+  const fixture = JSON.parse(fs.readFileSync(`${root}/fixtures/multi-control-device.json`, 'utf8'));
+  assert.equal(manifest.contractVersion, contract.contractVersion);
+  assert.equal(contract.contractVersion, 'dinodia.v1');
+  assert.equal(fixture.device.homeId, fixture.context.homeId);
+  assert.equal('serviceId' in fixture.device, false);
+  assert.equal('entity_id' in fixture.device, false);
+});
