@@ -1,10 +1,20 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import path from 'node:path';
 import { createRequire } from 'node:module';
 
 const source = fs.readFileSync('src/index.ts', 'utf8');
 const config = fs.readFileSync('wrangler.toml', 'utf8');
+
+function loadWorker() {
+  const require = createRequire(import.meta.url);
+  const ts = require('typescript');
+  const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
+  const module = { exports: {} };
+  new Function('require', 'module', 'exports', compiled)(require, module, module.exports);
+  return module.exports.default;
+}
 
 test('edge worker is Vercel-only and API-only', () => {
   assert.match(source, /dinodia-platform-v2/);
@@ -21,13 +31,7 @@ test('edge secret is not configured as plaintext', () => {
 });
 
 test('worker forwards only the canonical stable Vercel origin', async () => {
-  const source = fs.readFileSync('src/index.ts', 'utf8');
-  const require = createRequire(import.meta.url);
-  const ts = require('typescript');
-  const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
-  const module = { exports: {} };
-  new Function('require', 'module', 'exports', compiled)(require, module, module.exports);
-  const worker = module.exports.default;
+  const worker = loadWorker();
   const originalFetch = globalThis.fetch;
   const forwarded = [];
   globalThis.fetch = async (request) => { forwarded.push(new Request(request)); return new Response('ok', { status: 200 }); };
@@ -43,6 +47,74 @@ test('worker forwards only the canonical stable Vercel origin', async () => {
     }
   } finally {
     globalThis.fetch = originalFetch;
+  }
+});
+
+test('Edge transport forwards every shared JSON fixture byte-for-byte to canonical Vercel only', async () => {
+  const worker = loadWorker();
+  const originalFetch = globalThis.fetch;
+  const OriginalRequest = globalThis.Request;
+  const forwarded = [];
+  const fixtureRoot = path.resolve('test/fixtures/dinodia-v1/fixtures');
+  const fixtureFiles = [];
+  const walk = (directory) => {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+      const absolute = path.join(directory, entry.name);
+      if (entry.isDirectory()) walk(absolute);
+      else if (entry.isFile() && entry.name.endsWith('.json')) fixtureFiles.push(absolute);
+    }
+  };
+  walk(fixtureRoot);
+  assert.ok(fixtureFiles.length >= 80, `expected the complete shared fixture corpus, found ${fixtureFiles.length}`);
+  const fixtureIndex = JSON.parse(fs.readFileSync(path.join(fixtureRoot, 'index.json'), 'utf8'));
+  const indexedFiles = new Set(Object.values(fixtureIndex.screenFixtures).flat().map((ref) => path.resolve(path.dirname(fixtureRoot), ref)));
+  assert.ok(indexedFiles.size >= 50, 'expected the complete indexed screen/action fixture set');
+  assert.ok([...indexedFiles].every((file) => fixtureFiles.includes(file)), 'every indexed fixture must be exercised by the Edge transport');
+
+  try {
+    // Cloudflare Workers accepts a streaming Request body without Node/undici's
+    // `duplex: "half"` extension. Adapt only the test runtime so the production
+    // worker is exercised with Workers-compatible Request semantics.
+    globalThis.Request = class WorkersCompatibleRequest extends OriginalRequest {
+      constructor(input, init) {
+        const adjusted = init?.body && init.duplex === undefined ? { ...init, duplex: 'half' } : init;
+        super(input, adjusted);
+      }
+    };
+    globalThis.fetch = async (request) => {
+      const captured = new Request(request);
+      forwarded.push({ url: captured.url, method: captured.method, body: await captured.text(), headers: captured.headers });
+      return new Response(null, { status: 204, headers: { 'x-vercel-protection-bypass': 'must-not-return' } });
+    };
+    const env = {
+      VERCEL_APP_ORIGIN: 'https://dinodia-platform-v2.vercel.app',
+      VERCEL_AUTOMATION_BYPASS_SECRET: 'test-only-not-a-real-secret',
+    };
+    for (const [index, fixtureFile] of fixtureFiles.entries()) {
+      const bytes = fs.readFileSync(fixtureFile);
+      const query = `?fixture=${index}`;
+      const response = await worker.fetch(new Request(`https://edge.example/api/v2/contract-fixture${query}`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'cf-connecting-ip': '192.0.2.40' },
+        body: bytes,
+      }), env);
+      assert.equal(response.status, 204, path.relative(fixtureRoot, fixtureFile));
+      assert.equal(response.headers.get('x-vercel-protection-bypass'), null, 'the upstream bypass credential must be stripped from the response');
+      assert.equal(response.headers.get('x-dinodia-api-backend'), 'vercel-v2');
+      const observed = forwarded[index];
+      assert.equal(observed.url, `https://dinodia-platform-v2.vercel.app/api/v2/contract-fixture${query}`);
+      assert.equal(observed.method, 'POST');
+      assert.deepEqual(Buffer.from(observed.body), bytes, `fixture bytes changed in Edge transport: ${path.relative(fixtureRoot, fixtureFile)}`);
+      assert.equal(observed.headers.get('host'), 'edge.example');
+      assert.equal(observed.headers.get('x-forwarded-host'), 'edge.example');
+      assert.equal(observed.headers.get('x-forwarded-proto'), 'https');
+      assert.equal(observed.headers.get('x-forwarded-for'), '192.0.2.40');
+      assert.equal(observed.headers.get('x-vercel-protection-bypass'), 'test-only-not-a-real-secret');
+    }
+    assert.equal(forwarded.length, fixtureFiles.length, 'each fixture must make exactly one canonical upstream request');
+  } finally {
+    globalThis.fetch = originalFetch;
+    globalThis.Request = OriginalRequest;
   }
 });
 
